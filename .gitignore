@@ -1,1 +1,8 @@
 /desktop.ini
+build/
+main
+.vscode/
+*.o
+*.obj
+students.zip
+students*.txt
