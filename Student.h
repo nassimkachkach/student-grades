@@ -9,13 +9,17 @@
 
 class Student {
 public:
+	enum class GradeMethod {
+		Average,
+		Median
+	};
+
 	Student();
-	explicit Student(std::size_t homeworkCount);
 	Student(const Student& other);
 	Student& operator=(const Student& other);
 	~Student();
 
-	void calculateFinalGrade();
+	void calculateFinalGrade(GradeMethod method);
 
 	friend std::istream& operator>>(std::istream& in, Student& student);
 	friend std::ostream& operator<<(std::ostream& out, const Student& student);
@@ -23,8 +27,8 @@ public:
 private:
 	std::string firstName_;
 	std::string surname_;
-	std::vector<double> homeworkResults_;
-	double examResult_;
+	std::vector<int> homeworkResults_;
+	int examResult_;
 	double finalGrade_;
 };
 

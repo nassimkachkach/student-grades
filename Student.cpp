@@ -1,20 +1,37 @@
 #include "Student.h"
 
+#include <algorithm>
 #include <iomanip>
+#include <limits>
+#include <sstream>
+
+namespace {
+	constexpr int kMinScore = 1;
+	constexpr int kMaxScore = 10;
+	constexpr double kHomeworkWeight = 0.4;
+	constexpr double kExamWeight = 0.6;
+
+	bool isScoreInRange(int score) {
+		return score >= kMinScore && score <= kMaxScore;
+	}
+
+	bool parseWholeLineAsInt(const std::string& line, int& value) {
+		std::istringstream stream(line);
+
+		if (!(stream >> value)) {
+			return false;
+		}
+
+		stream >> std::ws;
+		return stream.eof();
+	}
+}
 
 Student::Student()
 	: firstName_(),
 	  surname_(),
 	  homeworkResults_(),
-	  examResult_(0.0),
-	  finalGrade_(0.0) {
-}
-
-Student::Student(std::size_t homeworkCount)
-	: firstName_(),
-	  surname_(),
-	  homeworkResults_(homeworkCount, 0.0),
-	  examResult_(0.0),
+	  examResult_(0),
 	  finalGrade_(0.0) {
 }
 
@@ -41,33 +58,130 @@ Student& Student::operator=(const Student& other) {
 Student::~Student() {
 }
 
-void Student::calculateFinalGrade() {
+double calculateMedian(const std::vector<int>& values) {
+	if (values.empty()) {
+		return 0.0;
+	}
+
+	std::vector<int> sortedValues = values;
+	std::sort(sortedValues.begin(), sortedValues.end());
+
+	const std::size_t middle = sortedValues.size() / 2;
+
+	if (sortedValues.size() % 2 == 0) {
+		return static_cast<double>(sortedValues[middle - 1] + sortedValues[middle]) / 2.0;
+	}
+
+	return static_cast<double>(sortedValues[middle]);
+}
+
+void Student::calculateFinalGrade(GradeMethod method) {
 	double homeworkAverage = 0.0;
+	double homeworkValue = 0.0;
 
 	if (!homeworkResults_.empty()) {
 		double homeworkSum = 0.0;
 
-		for (double homeworkResult : homeworkResults_) {
+		for (int homeworkResult : homeworkResults_) {
 			homeworkSum += homeworkResult;
 		}
 
 		homeworkAverage = homeworkSum / static_cast<double>(homeworkResults_.size());
 	}
 
-	finalGrade_ = 0.4 * homeworkAverage + 0.6 * examResult_;
+	if (method == GradeMethod::Median) {
+		homeworkValue = calculateMedian(homeworkResults_);
+	} else {
+		homeworkValue = homeworkAverage;
+	}
+
+	finalGrade_ = kHomeworkWeight * homeworkValue + kExamWeight * static_cast<double>(examResult_);
 }
 
 std::istream& operator>>(std::istream& in, Student& student) {
 	in >> student.firstName_ >> student.surname_;
+	if (!in) {
+		return in;
+	}
+	in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-	for (double& homeworkResult : student.homeworkResults_) {
-		in >> homeworkResult;
+	student.homeworkResults_.clear();
+
+	std::string line;
+
+	while (true) {
+		if (&in == &std::cin) {
+			std::cout << "Enter homework score [1-10] (negative or empty line to finish): ";
+		}
+
+		if (!std::getline(in, line)) {
+			return in;
+		}
+
+		if (line.empty()) {
+			break;
+		}
+
+		int score = 0;
+		if (!parseWholeLineAsInt(line, score)) {
+			if (&in == &std::cin) {
+				std::cout << "Invalid input. Please enter a whole number.\n";
+				continue;
+			}
+
+			in.setstate(std::ios::failbit);
+			return in;
+		}
+
+		if (score < 0) {
+			break;
+		}
+
+		if (!isScoreInRange(score)) {
+			if (&in == &std::cin) {
+				std::cout << "Homework score must be in range [1-10].\n";
+				continue;
+			}
+
+			in.setstate(std::ios::failbit);
+			return in;
+		}
+
+		student.homeworkResults_.push_back(score);
 	}
 
-	in >> student.examResult_;
+	while (true) {
+		if (&in == &std::cin) {
+			std::cout << "Enter exam score [1-10]: ";
+		}
 
-	if (in) {
-		student.calculateFinalGrade();
+		if (!std::getline(in, line)) {
+			return in;
+		}
+
+		if (line.empty()) {
+			if (&in == &std::cin) {
+				std::cout << "Exam score is required.\n";
+				continue;
+			}
+
+			in.setstate(std::ios::failbit);
+			return in;
+		}
+
+		int examScore = 0;
+		if (!parseWholeLineAsInt(line, examScore) || !isScoreInRange(examScore)) {
+			if (&in == &std::cin) {
+				std::cout << "Exam score must be a whole number in range [1-10].\n";
+				continue;
+			}
+
+			in.setstate(std::ios::failbit);
+			return in;
+		}
+
+		student.examResult_ = examScore;
+		break;
 	}
 
 	return in;
