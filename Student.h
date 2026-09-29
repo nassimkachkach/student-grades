@@ -15,6 +15,7 @@ public:
 	};
 
 	Student();
+	Student(const std::string& firstName, const std::string& surname, const std::vector<int>& homeworkResults, int examResult);
 	Student(const Student& other);
 	Student& operator=(const Student& other);
 	~Student();
