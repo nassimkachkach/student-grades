@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <limits>
+#include <random>
 #include <sstream>
 
 namespace {
@@ -27,11 +28,34 @@ namespace {
 	}
 }
 
+std::mt19937& randomEngine() {
+	static std::mt19937 engine{std::random_device{}()};
+	return engine;
+}
+
+int generateRandomScore() {
+	std::uniform_int_distribution<int> distribution(kMinScore, kMaxScore);
+	return distribution(randomEngine());
+}
+
+std::size_t generateRandomCount(std::size_t minCount, std::size_t maxCount) {
+	std::uniform_int_distribution<std::size_t> distribution(minCount, maxCount);
+	return distribution(randomEngine());
+}
+
 Student::Student()
 	: firstName_(),
 	  surname_(),
 	  homeworkResults_(),
 	  examResult_(0),
+	  finalGrade_(0.0) {
+}
+
+Student::Student(const std::string& firstName, const std::string& surname, const std::vector<int>& homeworkResults, int examResult)
+	: firstName_(firstName),
+	  surname_(surname),
+	  homeworkResults_(homeworkResults),
+	  examResult_(examResult),
 	  finalGrade_(0.0) {
 }
 
