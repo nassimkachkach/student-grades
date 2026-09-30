@@ -48,7 +48,9 @@ Student::Student()
 	  surname_(),
 	  homeworkResults_(),
 	  examResult_(0),
-	  finalGrade_(0.0) {
+	  finalGrade_(0.0),
+	  averageFinalGrade_(0.0),
+	  medianFinalGrade_(0.0) {
 }
 
 Student::Student(const std::string& firstName, const std::string& surname, const std::vector<int>& homeworkResults, int examResult)
@@ -56,7 +58,9 @@ Student::Student(const std::string& firstName, const std::string& surname, const
 	  surname_(surname),
 	  homeworkResults_(homeworkResults),
 	  examResult_(examResult),
-	  finalGrade_(0.0) {
+	  finalGrade_(0.0),
+	  averageFinalGrade_(0.0),
+	  medianFinalGrade_(0.0) {
 }
 
 Student::Student(const Student& other)
@@ -64,7 +68,9 @@ Student::Student(const Student& other)
 	  surname_(other.surname_),
 	  homeworkResults_(other.homeworkResults_),
 	  examResult_(other.examResult_),
-	  finalGrade_(other.finalGrade_) {
+	  finalGrade_(other.finalGrade_),
+	  averageFinalGrade_(other.averageFinalGrade_),
+	  medianFinalGrade_(other.medianFinalGrade_) {
 }
 
 Student& Student::operator=(const Student& other) {
@@ -74,6 +80,8 @@ Student& Student::operator=(const Student& other) {
 		homeworkResults_ = other.homeworkResults_;
 		examResult_ = other.examResult_;
 		finalGrade_ = other.finalGrade_;
+		averageFinalGrade_ = other.averageFinalGrade_;
+		medianFinalGrade_ = other.medianFinalGrade_;
 	}
 
 	return *this;
@@ -99,17 +107,31 @@ double calculateMedian(const std::vector<int>& values) {
 	return static_cast<double>(sortedValues[middle]);
 }
 
+void Student::calculateFinalGrades() {
+	double homeworkAverage = 0.0;
+	if (!homeworkResults_.empty()) {
+		double homeworkSum = 0.0;
+		for (int homeworkResult : homeworkResults_) {
+			homeworkSum += homeworkResult;
+		}
+		homeworkAverage = homeworkSum / static_cast<double>(homeworkResults_.size());
+	}
+
+	const double homeworkMedian = calculateMedian(homeworkResults_);
+	averageFinalGrade_ = kHomeworkWeight * homeworkAverage + kExamWeight * static_cast<double>(examResult_);
+	medianFinalGrade_ = kHomeworkWeight * homeworkMedian + kExamWeight * static_cast<double>(examResult_);
+	finalGrade_ = averageFinalGrade_;
+}
+
 void Student::calculateFinalGrade(GradeMethod method) {
 	double homeworkAverage = 0.0;
 	double homeworkValue = 0.0;
 
 	if (!homeworkResults_.empty()) {
 		double homeworkSum = 0.0;
-
 		for (int homeworkResult : homeworkResults_) {
 			homeworkSum += homeworkResult;
 		}
-
 		homeworkAverage = homeworkSum / static_cast<double>(homeworkResults_.size());
 	}
 
@@ -120,6 +142,36 @@ void Student::calculateFinalGrade(GradeMethod method) {
 	}
 
 	finalGrade_ = kHomeworkWeight * homeworkValue + kExamWeight * static_cast<double>(examResult_);
+	averageFinalGrade_ = kHomeworkWeight * homeworkAverage + kExamWeight * static_cast<double>(examResult_);
+	medianFinalGrade_ = kHomeworkWeight * calculateMedian(homeworkResults_) + kExamWeight * static_cast<double>(examResult_);
+}
+
+const std::string& Student::firstName() const {
+	return firstName_;
+}
+
+const std::string& Student::surname() const {
+	return surname_;
+}
+
+const std::vector<int>& Student::homeworkResults() const {
+	return homeworkResults_;
+}
+
+int Student::examResult() const {
+	return examResult_;
+}
+
+double Student::averageFinalGrade() const {
+	return averageFinalGrade_;
+}
+
+double Student::medianFinalGrade() const {
+	return medianFinalGrade_;
+}
+
+double Student::finalGrade() const {
+	return finalGrade_;
 }
 
 std::istream& operator>>(std::istream& in, Student& student) {
