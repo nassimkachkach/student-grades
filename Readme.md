@@ -17,8 +17,7 @@ depending on the selected grade method.
 From the project root:
 
 ```cmd
-call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat" -no_logo -arch=x64 -host_arch=x64
-cl /std:c++17 /EHsc /W4 /nologo /I. /Fo:build\ /Fe:build\main.exe main.cpp Student.cpp
+build.cmd
 ```
 
 ## Usage
