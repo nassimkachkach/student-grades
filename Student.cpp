@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <iomanip>
 #include <limits>
-#include <random>
 #include <sstream>
 
 namespace {
@@ -26,21 +25,6 @@ namespace {
 		stream >> std::ws;
 		return stream.eof();
 	}
-}
-
-std::mt19937& randomEngine() {
-	static std::mt19937 engine{std::random_device{}()};
-	return engine;
-}
-
-int generateRandomScore() {
-	std::uniform_int_distribution<int> distribution(kMinScore, kMaxScore);
-	return distribution(randomEngine());
-}
-
-std::size_t generateRandomCount(std::size_t minCount, std::size_t maxCount) {
-	std::uniform_int_distribution<std::size_t> distribution(minCount, maxCount);
-	return distribution(randomEngine());
 }
 
 Student::Student()
@@ -90,21 +74,23 @@ Student& Student::operator=(const Student& other) {
 Student::~Student() {
 }
 
-double calculateMedian(const std::vector<int>& values) {
-	if (values.empty()) {
-		return 0.0;
+namespace {
+	double calculateMedian(const std::vector<int>& values) {
+		if (values.empty()) {
+			return 0.0;
+		}
+
+		std::vector<int> sortedValues = values;
+		std::sort(sortedValues.begin(), sortedValues.end());
+
+		const std::size_t middle = sortedValues.size() / 2;
+
+		if (sortedValues.size() % 2 == 0) {
+			return static_cast<double>(sortedValues[middle - 1] + sortedValues[middle]) / 2.0;
+		}
+
+		return static_cast<double>(sortedValues[middle]);
 	}
-
-	std::vector<int> sortedValues = values;
-	std::sort(sortedValues.begin(), sortedValues.end());
-
-	const std::size_t middle = sortedValues.size() / 2;
-
-	if (sortedValues.size() % 2 == 0) {
-		return static_cast<double>(sortedValues[middle - 1] + sortedValues[middle]) / 2.0;
-	}
-
-	return static_cast<double>(sortedValues[middle]);
 }
 
 void Student::calculateFinalGrades() {
