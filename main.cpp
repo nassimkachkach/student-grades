@@ -5,6 +5,7 @@
 #include "StudentFileReader.h"
 
 #include <algorithm>
+#include <exception>
 #include <iomanip>
 #include <limits>
 #include <string>
@@ -83,45 +84,48 @@ namespace {
 }
 
 int main() {
-    std::size_t inputMode = askChoice("Choose input mode ([1] Manual / [2] Random / [3] File): ", 1, 3);
-    Student::GradeMethod gradeMethod = askGradeMethod();
-    std::vector<Student> students;
+    try {
+        std::size_t inputMode = askChoice("Choose input mode ([1] Manual / [2] Random / [3] File): ", 1, 3);
+        Student::GradeMethod gradeMethod = askGradeMethod();
+        std::vector<Student> students;
 
-    if (inputMode == 1) {
-        std::size_t studentCount = askChoice("Enter number of students: ", 1, 1000);
-        students.reserve(studentCount);
-        for (std::size_t i = 0; i < studentCount; ++i) {
-            Student student;
-            std::cout << "Enter student " << (i + 1) << " name and surname: ";
-            std::cin >> student;
+        if (inputMode == 1) {
+            std::size_t studentCount = askChoice("Enter number of students: ", 1, 1000);
+            students.reserve(studentCount);
+            for (std::size_t i = 0; i < studentCount; ++i) {
+                Student student;
+                std::cout << "Enter student " << (i + 1) << " name and surname: ";
+                std::cin >> student;
 
-            if (!std::cin) {
-                std::cerr << "Invalid student input.\n";
-                return 1;
+                if (!std::cin) {
+                    std::cerr << "Invalid student input.\n";
+                    return 1;
+                }
+
+                student.calculateFinalGrade(gradeMethod);
+                students.push_back(student);
             }
-
-            student.calculateFinalGrade(gradeMethod);
-            students.push_back(student);
+        } else if (inputMode == 2) {
+            std::size_t studentCount = askChoice("Enter number of students: ", 1, 1000);
+            students.reserve(studentCount);
+            RandomStudentGenerator::generateStudents(students, studentCount, gradeMethod);
+        } else {
+            std::string filePath = askText("Enter file path (blank uses students10000.txt): ");
+            const std::filesystem::path resolvedPath = StudentFileReader::resolveInputPath(filePath);
+            StudentFileReader::readStudentsFromFile(resolvedPath.string(), students);
         }
-    } else if (inputMode == 2) {
-        std::size_t studentCount = askChoice("Enter number of students: ", 1, 1000);
-        students.reserve(studentCount);
-        RandomStudentGenerator::generateStudents(students, studentCount, gradeMethod);
-    } else {
-        std::string filePath = askText("Enter file path (blank uses students10000.txt): ");
-        const std::filesystem::path resolvedPath = StudentFileReader::resolveInputPath(filePath);
-        if (!StudentFileReader::readStudentsFromFile(resolvedPath.string(), students)) {
-            return 1;
+
+        std::size_t sortChoice = askChoice("Sort by ([1] Name / [2] Surname): ", 1, 2);
+        if (sortChoice == 1) {
+            std::sort(students.begin(), students.end(), StudentComparator::compareByName);
+        } else {
+            std::sort(students.begin(), students.end(), StudentComparator::compareBySurname);
         }
-    }
 
-    std::size_t sortChoice = askChoice("Sort by ([1] Name / [2] Surname): ", 1, 2);
-    if (sortChoice == 1) {
-        std::sort(students.begin(), students.end(), StudentComparator::compareByName);
-    } else {
-        std::sort(students.begin(), students.end(), StudentComparator::compareBySurname);
+        printResults(students);
+        return 0;
+    } catch (const std::exception& exception) {
+        std::cerr << "Error: " << exception.what() << '\n';
+        return 1;
     }
-
-    printResults(students);
-    return 0;
 }

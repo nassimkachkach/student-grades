@@ -39,6 +39,6 @@ For file input, the expected format is:
 - whitespace-separated values
 - CRLF line endings are accepted
 - blank lines are ignored
-- rows with invalid data are skipped with a clear error message
+- rows with invalid data stop parsing and report a clear error message
 
 The program also supports sorting by either name or surname using `std::sort` and a natural-order comparator, so `Vardas10` sorts after `Vardas9`.
