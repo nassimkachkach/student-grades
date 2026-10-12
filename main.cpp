@@ -98,8 +98,7 @@ int main() {
                 std::cin >> student;
 
                 if (!std::cin) {
-                    std::cerr << "Invalid student input.\n";
-                    return 1;
+                    throw std::runtime_error("Invalid student input.");
                 }
 
                 student.calculateFinalGrade(gradeMethod);
