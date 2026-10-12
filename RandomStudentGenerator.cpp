@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <limits>
+#include <stdexcept>
 
 namespace {
 	constexpr std::size_t kMinHomeworkCount = 1;
@@ -83,8 +84,7 @@ void RandomStudentGenerator::generateStudents(std::vector<Student>& students, st
 			std::cin >> firstName >> surname;
 
 			if (!std::cin) {
-				std::cerr << "Invalid student input.\n";
-				return;
+				throw std::runtime_error("Invalid student input.");
 			}
 		} else {
 			firstName = makeGeneratedName("Name", i + 1);

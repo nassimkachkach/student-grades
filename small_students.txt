@@ -1,0 +1,3 @@
+Vardas Pavarde ND1 ND2 ND3 Egz.
+Alice Smith 10 9 8 9
+Bob Jones 7 8 6 7

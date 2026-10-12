@@ -2,8 +2,9 @@
 
 #include <cctype>
 #include <fstream>
-#include <iostream>
 #include <sstream>
+#include <stdexcept>
+#include <utility>
 
 namespace {
 	std::string stripCarriageReturn(std::string line) {
@@ -64,17 +65,17 @@ std::filesystem::path StudentFileReader::resolveInputPath(const std::string& inp
 	return candidate;
 }
 
-bool StudentFileReader::readStudentsFromFile(const std::string& filePath, std::vector<Student>& students) {
+void StudentFileReader::readStudentsFromFile(const std::string& filePath, std::vector<Student>& students) {
 	std::ifstream input(filePath);
 	if (!input) {
-		std::cerr << "Error: unable to open file '" << filePath << "'.\n";
-		return false;
+		throw std::runtime_error("Unable to open file '" + filePath + "'.");
 	}
 
 	std::string line;
 	std::size_t lineNumber = 0;
 	std::size_t expectedHomeworkCount = 0;
 	bool headerFound = false;
+	std::vector<Student> loadedStudents;
 
 	while (std::getline(input, line)) {
 		line = stripCarriageReturn(line);
@@ -87,19 +88,19 @@ bool StudentFileReader::readStudentsFromFile(const std::string& filePath, std::v
 		const std::vector<std::string> columns = splitWhitespace(line);
 		if (!headerFound) {
 			if (columns.size() < 3) {
-				std::cerr << "Error: malformed header on line " << lineNumber << ": expected at least 3 columns.\n";
-				return false;
+				throw StudentRecordParseError(
+					"Malformed header on line " + std::to_string(lineNumber) + ": expected at least 3 columns.");
 			}
 
-			if (columns[0] != "Vardas" || columns[1] != "Pavarde") {
-				std::cerr << "Error: expected a header with 'Vardas Pavarde ... Egz.' on line " << lineNumber << ".\n";
-				return false;
+			if (columns.at(0) != "Vardas" || columns.at(1) != "Pavarde") {
+				throw StudentRecordParseError(
+					"Expected a header with 'Vardas Pavarde ... Egz.' on line " + std::to_string(lineNumber) + ".");
 			}
 
 			expectedHomeworkCount = columns.size() - 3;
 			if (expectedHomeworkCount == 0) {
-				std::cerr << "Error: no homework columns detected in header on line " << lineNumber << ".\n";
-				return false;
+				throw StudentRecordParseError(
+					"No homework columns detected in header on line " + std::to_string(lineNumber) + ".");
 			}
 
 			headerFound = true;
@@ -107,46 +108,48 @@ bool StudentFileReader::readStudentsFromFile(const std::string& filePath, std::v
 		}
 
 		if (columns.size() != expectedHomeworkCount + 3) {
-			std::cerr << "Error: malformed row on line " << lineNumber << ": expected "
-					  << (expectedHomeworkCount + 3) << " columns, found " << columns.size() << ".\n";
-			continue;
+			throw StudentRecordParseError(
+				"Malformed row on line " + std::to_string(lineNumber) + ": expected " +
+				std::to_string(expectedHomeworkCount + 3) + " columns, found " + std::to_string(columns.size()) + ".");
 		}
 
 		std::vector<int> homeworkScores;
 		homeworkScores.reserve(expectedHomeworkCount);
-		bool validRow = true;
 
 		for (std::size_t i = 2; i + 1 < columns.size(); ++i) {
 			int score = 0;
-			if (!parseIntToken(columns[i], score) || score < 1 || score > 10) {
-				std::cerr << "Error: malformed row on line " << lineNumber << ": invalid homework score '"
-						  << columns[i] << "'.\n";
-				validRow = false;
-				break;
+			if (!parseIntToken(columns.at(i), score)) {
+				throw StudentRecordParseError(
+					"Malformed homework score on line " + std::to_string(lineNumber) + ": '" + columns.at(i) + "'.");
 			}
+
+			if (score < 1 || score > 10) {
+				throw std::out_of_range(
+					"Homework score out of range on line " + std::to_string(lineNumber) + ": '" + columns.at(i) + "'.");
+			}
+
 			homeworkScores.push_back(score);
 		}
 
-		if (!validRow) {
-			continue;
-		}
-
 		int examScore = 0;
-		if (!parseIntToken(columns.back(), examScore) || examScore < 0 || examScore > 10) {
-			std::cerr << "Error: malformed row on line " << lineNumber << ": invalid exam score '"
-					  << columns.back() << "'.\n";
-			continue;
+		if (!parseIntToken(columns.back(), examScore)) {
+			throw StudentRecordParseError(
+				"Malformed exam score on line " + std::to_string(lineNumber) + ": '" + columns.back() + "'.");
 		}
 
-		Student student(columns[0], columns[1], homeworkScores, examScore);
+		if (examScore < 0 || examScore > 10) {
+			throw std::out_of_range(
+				"Exam score out of range on line " + std::to_string(lineNumber) + ": '" + columns.back() + "'.");
+		}
+
+		Student student(columns.at(0), columns.at(1), homeworkScores, examScore);
 		student.calculateFinalGrades();
-		students.push_back(student);
+		loadedStudents.push_back(student);
 	}
 
 	if (!headerFound) {
-		std::cerr << "Error: file '" << filePath << "' does not contain a valid header.\n";
-		return false;
+		throw StudentRecordParseError("File '" + filePath + "' does not contain a valid header.");
 	}
 
-	return true;
+	students = std::move(loadedStudents);
 }
