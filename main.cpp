@@ -3,15 +3,35 @@
 #include "RandomStudentGenerator.h"
 #include "Sorting.h"
 #include "StudentFileReader.h"
+#include "StudentFileWriter.h"
 
+#include <algorithm>
+#include <chrono>
 #include <algorithm>
 #include <exception>
 #include <iomanip>
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <vector>
 
 namespace {
+    using Clock = std::chrono::steady_clock;
+    using Microseconds = std::chrono::microseconds;
+
+    struct PhaseTimings {
+        Microseconds reading{};
+        Microseconds sorting{};
+        Microseconds splitting{};
+        Microseconds writingPassed{};
+        Microseconds writingFailed{};
+    };
+
+    struct SplitStudents {
+        std::vector<Student> passed;
+        std::vector<Student> failed;
+    };
+
     Student::GradeMethod askGradeMethod() {
         while (true) {
             std::string answer;
@@ -56,6 +76,55 @@ namespace {
         return value;
     }
 
+    std::filesystem::path makeSiblingOutputPath(const std::filesystem::path& inputPath, const std::string& suffix) {
+        const std::filesystem::path parentPath = inputPath.parent_path();
+        const std::string baseName = inputPath.stem().string() + suffix + inputPath.extension().string();
+        return parentPath.empty() ? std::filesystem::path(baseName) : parentPath / baseName;
+    }
+
+    std::size_t homeworkCountForStudents(const std::vector<Student>& students) {
+        if (students.empty()) {
+            throw std::runtime_error("No students were loaded from the input file.");
+        }
+
+        return students.front().homeworkResults().size();
+    }
+
+    void sortStudents(std::vector<Student>& students, std::size_t sortChoice) {
+        if (sortChoice == 1) {
+            std::sort(students.begin(), students.end(), StudentComparator::compareByName);
+        } else {
+            std::sort(students.begin(), students.end(), StudentComparator::compareBySurname);
+        }
+    }
+
+    SplitStudents splitStudents(std::vector<Student>& students, Student::GradeMethod gradeMethod) {
+        SplitStudents result;
+        result.passed.reserve(students.size());
+        result.failed.reserve(students.size());
+
+        for (Student& student : students) {
+            student.calculateFinalGrade(gradeMethod);
+
+            if (student.finalGrade() < 5.0) {
+                result.failed.push_back(student);
+            } else {
+                result.passed.push_back(student);
+            }
+        }
+
+        return result;
+    }
+
+    void printPhaseTimings(const PhaseTimings& timings) {
+        std::cout << "Phase timings (microseconds):\n"
+                  << "  Reading:          " << timings.reading.count() << '\n'
+                  << "  Sorting:          " << timings.sorting.count() << '\n'
+                  << "  Splitting:        " << timings.splitting.count() << '\n'
+                  << "  Writing passed:    " << timings.writingPassed.count() << '\n'
+                  << "  Writing failed:    " << timings.writingFailed.count() << '\n';
+    }
+
     void printResults(const std::vector<Student>& students) {
         std::size_t nameWidth = std::string("Name").size();
         std::size_t surnameWidth = std::string("Surname").size();
@@ -80,6 +149,40 @@ namespace {
                       << "  " << std::fixed << std::setprecision(2) << std::right << std::setw(static_cast<int>(valueWidth))
                       << student.averageFinalGrade() << " | " << std::setw(static_cast<int>(valueWidth)) << student.medianFinalGrade() << '\n';
         }
+    }
+
+    void processFilePipeline(const std::filesystem::path& resolvedPath, Student::GradeMethod gradeMethod, std::size_t sortChoice) {
+        std::vector<Student> students;
+        PhaseTimings timings;
+
+        auto phaseStart = Clock::now();
+        StudentFileReader::readStudentsFromFile(resolvedPath.string(), students);
+        timings.reading = std::chrono::duration_cast<Microseconds>(Clock::now() - phaseStart);
+
+        const std::size_t homeworkCount = homeworkCountForStudents(students);
+
+        phaseStart = Clock::now();
+        sortStudents(students, sortChoice);
+        timings.sorting = std::chrono::duration_cast<Microseconds>(Clock::now() - phaseStart);
+
+        phaseStart = Clock::now();
+        const SplitStudents splitStudentsResult = splitStudents(students, gradeMethod);
+        timings.splitting = std::chrono::duration_cast<Microseconds>(Clock::now() - phaseStart);
+
+        const std::filesystem::path passedPath = makeSiblingOutputPath(resolvedPath, "_passed");
+        const std::filesystem::path failedPath = makeSiblingOutputPath(resolvedPath, "_failed");
+
+        phaseStart = Clock::now();
+        StudentFileWriter::writeStudentsToFile(passedPath, splitStudentsResult.passed, homeworkCount);
+        timings.writingPassed = std::chrono::duration_cast<Microseconds>(Clock::now() - phaseStart);
+
+        phaseStart = Clock::now();
+        StudentFileWriter::writeStudentsToFile(failedPath, splitStudentsResult.failed, homeworkCount);
+        timings.writingFailed = std::chrono::duration_cast<Microseconds>(Clock::now() - phaseStart);
+
+        std::cout << "Passed file: " << passedPath.string() << " (" << splitStudentsResult.passed.size() << " students)\n";
+        std::cout << "Failed file: " << failedPath.string() << " (" << splitStudentsResult.failed.size() << " students)\n";
+        printPhaseTimings(timings);
     }
 }
 
@@ -111,7 +214,9 @@ int main() {
         } else {
             std::string filePath = askText("Enter file path (blank uses students10000.txt): ");
             const std::filesystem::path resolvedPath = StudentFileReader::resolveInputPath(filePath);
-            StudentFileReader::readStudentsFromFile(resolvedPath.string(), students);
+            std::size_t sortChoice = askChoice("Sort by ([1] Name / [2] Surname): ", 1, 2);
+            processFilePipeline(resolvedPath, gradeMethod, sortChoice);
+            return 0;
         }
 
         std::size_t sortChoice = askChoice("Sort by ([1] Name / [2] Surname): ", 1, 2);
