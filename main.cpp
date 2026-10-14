@@ -7,12 +7,14 @@
 
 #include <algorithm>
 #include <chrono>
-#include <algorithm>
+#include <deque>
 #include <exception>
 #include <iomanip>
 #include <filesystem>
 #include <limits>
+#include <list>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -25,12 +27,31 @@ namespace {
         Microseconds splitting{};
         Microseconds writingPassed{};
         Microseconds writingFailed{};
+
+        Microseconds total() const {
+            return reading + sorting + splitting + writingPassed + writingFailed;
+        }
     };
 
+    template <typename Container>
     struct SplitStudents {
-        std::vector<Student> passed;
-        std::vector<Student> failed;
+        Container passed;
+        Container failed;
     };
+
+    template <typename Container>
+    constexpr bool isList = std::is_same_v<Container, std::list<Student>>;
+
+    template <typename Container>
+    const char* containerName() {
+        if constexpr (std::is_same_v<Container, std::vector<Student>>) {
+            return "std::vector";
+        } else if constexpr (isList<Container>) {
+            return "std::list";
+        } else {
+            return "std::deque";
+        }
+    }
 
     Student::GradeMethod askGradeMethod() {
         while (true) {
@@ -82,7 +103,8 @@ namespace {
         return parentPath.empty() ? std::filesystem::path(baseName) : parentPath / baseName;
     }
 
-    std::size_t homeworkCountForStudents(const std::vector<Student>& students) {
+    template <typename Container>
+    std::size_t homeworkCountForStudents(const Container& students) {
         if (students.empty()) {
             throw std::runtime_error("No students were loaded from the input file.");
         }
@@ -90,18 +112,25 @@ namespace {
         return students.front().homeworkResults().size();
     }
 
-    void sortStudents(std::vector<Student>& students, std::size_t sortChoice) {
-        if (sortChoice == 1) {
-            std::sort(students.begin(), students.end(), StudentComparator::compareByName);
+    template <typename Container>
+    void sortStudents(Container& students, std::size_t sortChoice) {
+        const auto comparator = sortChoice == 1 ? StudentComparator::compareByName : StudentComparator::compareBySurname;
+
+        if constexpr (isList<Container>) {
+            // std::sort needs random access iterators, std::list has its own sort.
+            students.sort(comparator);
         } else {
-            std::sort(students.begin(), students.end(), StudentComparator::compareBySurname);
+            std::sort(students.begin(), students.end(), comparator);
         }
     }
 
-    SplitStudents splitStudents(std::vector<Student>& students, Student::GradeMethod gradeMethod) {
-        SplitStudents result;
-        result.passed.reserve(students.size());
-        result.failed.reserve(students.size());
+    template <typename Container>
+    SplitStudents<Container> splitStudents(Container& students, Student::GradeMethod gradeMethod) {
+        SplitStudents<Container> result;
+        if constexpr (std::is_same_v<Container, std::vector<Student>>) {
+            result.passed.reserve(students.size());
+            result.failed.reserve(students.size());
+        }
 
         for (Student& student : students) {
             student.calculateFinalGrade(gradeMethod);
@@ -122,7 +151,8 @@ namespace {
                   << "  Sorting:          " << timings.sorting.count() << '\n'
                   << "  Splitting:        " << timings.splitting.count() << '\n'
                   << "  Writing passed:    " << timings.writingPassed.count() << '\n'
-                  << "  Writing failed:    " << timings.writingFailed.count() << '\n';
+                  << "  Writing failed:    " << timings.writingFailed.count() << '\n'
+                  << "  Total:            " << timings.total().count() << '\n';
     }
 
     void printResults(const std::vector<Student>& students) {
@@ -151,8 +181,9 @@ namespace {
         }
     }
 
+    template <typename Container>
     void processFilePipeline(const std::filesystem::path& resolvedPath, Student::GradeMethod gradeMethod, std::size_t sortChoice) {
-        std::vector<Student> students;
+        Container students;
         PhaseTimings timings;
 
         auto phaseStart = Clock::now();
@@ -166,7 +197,7 @@ namespace {
         timings.sorting = std::chrono::duration_cast<Microseconds>(Clock::now() - phaseStart);
 
         phaseStart = Clock::now();
-        const SplitStudents splitStudentsResult = splitStudents(students, gradeMethod);
+        const SplitStudents<Container> splitStudentsResult = splitStudents(students, gradeMethod);
         timings.splitting = std::chrono::duration_cast<Microseconds>(Clock::now() - phaseStart);
 
         const std::filesystem::path passedPath = makeSiblingOutputPath(resolvedPath, "_passed");
@@ -180,6 +211,7 @@ namespace {
         StudentFileWriter::writeStudentsToFile(failedPath, splitStudentsResult.failed, homeworkCount);
         timings.writingFailed = std::chrono::duration_cast<Microseconds>(Clock::now() - phaseStart);
 
+        std::cout << "Container: " << containerName<Container>() << '\n';
         std::cout << "Passed file: " << passedPath.string() << " (" << splitStudentsResult.passed.size() << " students)\n";
         std::cout << "Failed file: " << failedPath.string() << " (" << splitStudentsResult.failed.size() << " students)\n";
         printPhaseTimings(timings);
@@ -214,8 +246,16 @@ int main() {
         } else {
             std::string filePath = askText("Enter file path (blank uses students10000.txt): ");
             const std::filesystem::path resolvedPath = StudentFileReader::resolveInputPath(filePath);
+            std::size_t containerChoice = askChoice("Choose container ([1] vector / [2] list / [3] deque): ", 1, 3);
             std::size_t sortChoice = askChoice("Sort by ([1] Name / [2] Surname): ", 1, 2);
-            processFilePipeline(resolvedPath, gradeMethod, sortChoice);
+
+            if (containerChoice == 1) {
+                processFilePipeline<std::vector<Student>>(resolvedPath, gradeMethod, sortChoice);
+            } else if (containerChoice == 2) {
+                processFilePipeline<std::list<Student>>(resolvedPath, gradeMethod, sortChoice);
+            } else {
+                processFilePipeline<std::deque<Student>>(resolvedPath, gradeMethod, sortChoice);
+            }
             return 0;
         }
 
