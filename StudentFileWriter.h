@@ -4,12 +4,16 @@
 #include "Student.h"
 
 #include <cstddef>
+#include <deque>
 #include <filesystem>
+#include <list>
 #include <vector>
 
 class StudentFileWriter {
 public:
-	static void writeStudentsToFile(const std::filesystem::path& filePath, const std::vector<Student>& students, std::size_t homeworkCount);
+	// Instantiated for std::vector<Student>, std::list<Student> and std::deque<Student>.
+	template <typename Container>
+	static void writeStudentsToFile(const std::filesystem::path& filePath, const Container& students, std::size_t homeworkCount);
 };
 
 #endif

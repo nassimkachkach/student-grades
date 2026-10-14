@@ -3,7 +3,8 @@
 #include <fstream>
 #include <stdexcept>
 
-void StudentFileWriter::writeStudentsToFile(const std::filesystem::path& filePath, const std::vector<Student>& students, std::size_t homeworkCount) {
+template <typename Container>
+void StudentFileWriter::writeStudentsToFile(const std::filesystem::path& filePath, const Container& students, std::size_t homeworkCount) {
 	if (homeworkCount == 0) {
 		throw std::invalid_argument("Homework score count must be greater than zero.");
 	}
@@ -32,3 +33,7 @@ void StudentFileWriter::writeStudentsToFile(const std::filesystem::path& filePat
 		throw std::runtime_error("Failed while writing file: '" + filePath.string() + "'.");
 	}
 }
+
+template void StudentFileWriter::writeStudentsToFile<std::vector<Student>>(const std::filesystem::path&, const std::vector<Student>&, std::size_t);
+template void StudentFileWriter::writeStudentsToFile<std::list<Student>>(const std::filesystem::path&, const std::list<Student>&, std::size_t);
+template void StudentFileWriter::writeStudentsToFile<std::deque<Student>>(const std::filesystem::path&, const std::deque<Student>&, std::size_t);
