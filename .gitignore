@@ -2,6 +2,13 @@
 build/
 main
 .vscode/
+cmake-build*/
+CMakeFiles/
+CMakeCache.txt
+*.vcxproj*
+*.sln
+*.ilk
+*.pdb
 *.o
 *.obj
 students.zip
