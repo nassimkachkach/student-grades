@@ -65,7 +65,8 @@ std::filesystem::path StudentFileReader::resolveInputPath(const std::string& inp
 	return candidate;
 }
 
-void StudentFileReader::readStudentsFromFile(const std::string& filePath, std::vector<Student>& students) {
+template <typename Container>
+void StudentFileReader::readStudentsFromFile(const std::string& filePath, Container& students) {
 	std::ifstream input(filePath);
 	if (!input) {
 		throw std::runtime_error("Unable to open file '" + filePath + "'.");
@@ -75,7 +76,7 @@ void StudentFileReader::readStudentsFromFile(const std::string& filePath, std::v
 	std::size_t lineNumber = 0;
 	std::size_t expectedHomeworkCount = 0;
 	bool headerFound = false;
-	std::vector<Student> loadedStudents;
+	Container loadedStudents;
 
 	while (std::getline(input, line)) {
 		line = stripCarriageReturn(line);
@@ -153,3 +154,7 @@ void StudentFileReader::readStudentsFromFile(const std::string& filePath, std::v
 
 	students = std::move(loadedStudents);
 }
+
+template void StudentFileReader::readStudentsFromFile<std::vector<Student>>(const std::string&, std::vector<Student>&);
+template void StudentFileReader::readStudentsFromFile<std::list<Student>>(const std::string&, std::list<Student>&);
+template void StudentFileReader::readStudentsFromFile<std::deque<Student>>(const std::string&, std::deque<Student>&);

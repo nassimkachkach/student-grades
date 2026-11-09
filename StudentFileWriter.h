@@ -11,9 +11,9 @@
 
 class StudentFileWriter {
 public:
-	static void writeStudentsToFile(const std::filesystem::path& filePath, const std::vector<Student>& students, std::size_t homeworkCount);
-	static void writeStudentsToFile(const std::filesystem::path& filePath, const std::list<Student>& students, std::size_t homeworkCount);
-	static void writeStudentsToFile(const std::filesystem::path& filePath, const std::deque<Student>& students, std::size_t homeworkCount);
+	// Instantiated for std::vector<Student>, std::list<Student> and std::deque<Student>.
+	template <typename Container>
+	static void writeStudentsToFile(const std::filesystem::path& filePath, const Container& students, std::size_t homeworkCount);
 };
 
 #endif

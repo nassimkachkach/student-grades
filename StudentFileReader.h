@@ -3,7 +3,9 @@
 
 #include "Student.h"
 
+#include <deque>
 #include <filesystem>
+#include <list>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -16,7 +18,10 @@ public:
 class StudentFileReader {
 public:
 	static std::filesystem::path resolveInputPath(const std::string& inputText);
-	static void readStudentsFromFile(const std::string& filePath, std::vector<Student>& students);
+
+	// Instantiated for std::vector<Student>, std::list<Student> and std::deque<Student>.
+	template <typename Container>
+	static void readStudentsFromFile(const std::string& filePath, Container& students);
 };
 
 #endif

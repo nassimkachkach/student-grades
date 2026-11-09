@@ -7,8 +7,8 @@ Student grading and benchmark application with three input modes (manual, random
 Final grade = 0.4 x homework value + 0.6 x exam score
 
 where homework value is calculated as:
-1. Arithmetic average of homework scores, or
-2. Median of homework scores
+1. Arithmetic average of homework scores.
+2. Median of homework scores.
 
 ## Release history
 
@@ -22,23 +22,23 @@ where homework value is calculated as:
 
 ### v0.25 (Task 2 baseline)
 1. File pipeline timing by phases: reading, sorting, splitting, writing.
-2. Vector-based splitting to passed/failed outputs.
+2. Container-based processing support (`std::vector`, `std::list`, `std::deque`).
 
 ### v1.0 (final)
 1. Added split-strategy benchmark menu in file mode.
-2. Implemented all three containers for benchmarking: `std::vector`, `std::list`, `std::deque`.
+2. Implemented all three containers for benchmarking.
 3. Added two splitting strategies:
-	- Strategy 1: copy base students into two new containers (`failed` and `passed`).
-	- Strategy 2: move failing students to one new container and keep passed students in resized base container.
-4. Refactored core steps to use `<algorithm>` utilities (`std::transform`, `std::copy_if`, `std::remove_copy_if`, `std::copy`, `std::partition`, `std::min_element`, `std::sort`).
+   - Strategy 1: copy base students into two new containers (`failed` and `passed`).
+   - Strategy 2: move failing students to one new container and keep passed students in the base container.
+4. Refactored core logic using `<algorithm>` routines (`std::transform`, `std::copy_if`, `std::remove_copy_if`, `std::copy`, `std::partition`, `std::min_element`, `std::sort`).
 5. Added cross-platform build support using `Makefile` (Unix) and `CMakeLists.txt` (any OS).
 
 ## Benchmark strategy menu
 
 When choosing file input mode, benchmark menu options are:
-1. One container + one strategy
-2. All containers + one strategy
-3. All containers + both strategies
+1. One container + one strategy.
+2. All containers + one strategy.
+3. All containers + both strategies.
 
 Split strategies:
 1. Strategy 1: original container is unchanged; failed/passed containers are created by copying.
@@ -60,7 +60,7 @@ Benchmark mode: all containers + both strategies, grade method: average, sort by
 Observed fastest configuration in this run: `std::list` + Strategy 2.
 
 Comment on memory usage:
-1. Strategy 1 keeps the original student container and also creates two additional containers, so peak memory usage is expected to be higher.
+1. Strategy 1 keeps the original student container and creates two additional containers, so peak memory usage is typically higher.
 2. Strategy 2 usually has lower peak memory footprint because only one additional container is created.
 
 ## Build guide
@@ -82,10 +82,10 @@ make
 ```
 
 Targets:
-1. `make` builds `build/main` and `build/generate_student_files`
-2. `make run` runs the main app
-3. `make generate` runs file generator
-4. `make clean` removes `build/`
+1. `make` builds `build/main` and `build/generate_student_files`.
+2. `make run` runs the main app.
+3. `make generate` runs file generator.
+4. `make clean` removes `build/`.
 
 ### CMake (any OS)
 
@@ -95,27 +95,35 @@ cmake --build build-cmake --config Release
 ```
 
 Run:
-1. `build-cmake/main` on Unix-like systems
-2. `build-cmake/Release/main.exe` on MSVC multi-config generators
+1. `build-cmake/main` on Unix-like systems.
+2. `build-cmake/Release/main.exe` on MSVC multi-config generators.
 
-## Application usage (from make/build to benchmark)
+## Application usage
 
 1. Build project (`build.cmd`, `make`, or CMake).
 2. Start the main executable.
 3. Select input mode:
-	- `1` manual
-	- `2` random
-	- `3` file (benchmark path)
+   - `1` manual
+   - `2` random
+   - `3` file
 4. Select final grade method (`A` or `M`).
-5. For file mode: provide input file path (blank defaults to `students10000.txt`).
+5. For file mode, provide input file path (blank defaults to `students10000.txt`).
 6. Select sort field (name or surname).
 7. Select benchmark mode and strategy/container choices.
-8. Inspect generated `*_passed.txt` and `*_failed.txt` files and phase timings.
+8. Inspect generated `*_passed.txt` and `*_failed.txt` files and timing output.
 
 ## Input file format
 
 1. Header: `Vardas Pavarde ND1 ... NDn Egz.`
-2. One student per line
-3. Whitespace-separated values
-4. Blank lines ignored
-5. Invalid rows produce explicit parse errors
+2. One student per line.
+3. Whitespace-separated values.
+4. Blank lines are ignored.
+5. Invalid rows produce explicit parse errors.
+
+## Historical benchmark notes
+
+Earlier v0.25 measurements (hardware-dependent) showed:
+1. Parsing and reading dominated total runtime for very large files.
+2. `std::list` often sorted fastest due to node relinking in `list::sort()`.
+3. `std::vector` was frequently strong in splitting due to contiguous storage.
+4. Differences between containers were small on smaller datasets and more visible on million-scale datasets.

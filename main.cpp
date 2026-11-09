@@ -9,8 +9,8 @@
 #include <chrono>
 #include <deque>
 #include <exception>
-#include <iomanip>
 #include <filesystem>
+#include <iomanip>
 #include <list>
 #include <limits>
 #include <string>
@@ -366,7 +366,6 @@ namespace {
                       << student.averageFinalGrade() << " | " << std::setw(static_cast<int>(valueWidth)) << student.medianFinalGrade() << '\n';
         }
     }
-
 }
 
 int main() {
